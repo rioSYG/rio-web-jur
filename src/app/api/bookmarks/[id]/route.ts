@@ -9,7 +9,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!cloudBookmarksEnabled) {
+  if (!cloudBookmarksEnabled || !prisma) {
     return NextResponse.json({ error: "Cloud bookmarks are disabled." }, { status: 503 });
   }
 
@@ -43,7 +43,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!cloudBookmarksEnabled) {
+  if (!cloudBookmarksEnabled || !prisma) {
     return NextResponse.json({ error: "Cloud bookmarks are disabled." }, { status: 503 });
   }
 

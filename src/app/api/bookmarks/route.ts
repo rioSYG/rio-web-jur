@@ -50,7 +50,7 @@ function mapBookmark(bookmark: {
 }
 
 export async function GET() {
-  if (!cloudBookmarksEnabled) {
+  if (!cloudBookmarksEnabled || !prisma) {
     return NextResponse.json({ error: "Cloud bookmarks are disabled." }, { status: 503 });
   }
 
@@ -73,7 +73,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!cloudBookmarksEnabled) {
+  if (!cloudBookmarksEnabled || !prisma) {
     return NextResponse.json({ error: "Cloud bookmarks are disabled." }, { status: 503 });
   }
 

@@ -15,7 +15,7 @@ const demoLoginEnabled =
   process.env.NODE_ENV !== "production";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: cloudBookmarksEnabled ? PrismaAdapter(prisma) : undefined,
+  adapter: cloudBookmarksEnabled && prisma ? PrismaAdapter(prisma) : undefined,
   providers: [
     ...(githubEnabled
       ? [

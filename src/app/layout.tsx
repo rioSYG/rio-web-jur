@@ -20,7 +20,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  let session = null;
+  try {
+    session = await auth();
+  } catch (error) {
+    console.error("Auth error:", error);
+    session = null;
+  }
+
   const cloudBookmarksEnabled = Boolean(process.env.TURSO_DATABASE_URL);
   const githubEnabled = Boolean(
     cloudBookmarksEnabled &&

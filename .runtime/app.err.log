@@ -1,16 +1,36 @@
-[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: http://127.0.0.1:3002/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: https://peer-protocols-methods-showtimes.trycloudflare.com/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
     at C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\ssr\[root-of-the-server]__0b_sx_o._.js:414:51445
     at fF (C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\ssr\[root-of-the-server]__0b_sx_o._.js:414:54110)
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: https://referral-rate-significantly-hydrocodone.trycloudflare.com/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: https://localhost:3002/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
+    at C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\_091hdb-._.js:404:51445
+    at aU (C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\_091hdb-._.js:404:54110)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async rB.do (C:\Users\riofi\OneDrive\Documents\jur\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.prod.js:5:20926)
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: https://localhost:3002/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
+    at C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\_091hdb-._.js:404:51445
+    at aU (C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\_091hdb-._.js:404:54110)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async rB.do (C:\Users\riofi\OneDrive\Documents\jur\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.prod.js:5:20926)
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: https://peer-protocols-methods-showtimes.trycloudflare.com/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
     at C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\ssr\[root-of-the-server]__0b_sx_o._.js:414:51445
     at fF (C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\ssr\[root-of-the-server]__0b_sx_o._.js:414:54110)
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: https://referral-rate-significantly-hydrocodone.trycloudflare.com/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: https://peer-protocols-methods-showtimes.trycloudflare.com/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
     at C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\ssr\[root-of-the-server]__0b_sx_o._.js:414:51445
     at fF (C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\ssr\[root-of-the-server]__0b_sx_o._.js:414:54110)
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: https://referral-rate-significantly-hydrocodone.trycloudflare.com/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: https://localhost:3002/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
+    at C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\_091hdb-._.js:404:51445
+    at aU (C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\_091hdb-._.js:404:54110)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async rB.do (C:\Users\riofi\OneDrive\Documents\jur\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.prod.js:5:20926)
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: https://localhost:3002/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
+    at C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\_091hdb-._.js:404:51445
+    at aU (C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\_091hdb-._.js:404:54110)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async rB.do (C:\Users\riofi\OneDrive\Documents\jur\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.prod.js:5:20926)
+[31m[auth][error][0m UntrustedHost: Host must be trusted. URL was: https://peer-protocols-methods-showtimes.trycloudflare.com/api/auth/session. Read more at https://errors.authjs.dev#untrustedhost
     at C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\ssr\[root-of-the-server]__0b_sx_o._.js:414:51445
     at fF (C:\Users\riofi\OneDrive\Documents\jur\.next\server\chunks\ssr\[root-of-the-server]__0b_sx_o._.js:414:54110)
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
