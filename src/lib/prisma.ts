@@ -10,25 +10,24 @@ const prismaClientSingleton = () => {
     const tursoUrl = process.env.TURSO_DATABASE_URL;
     const tursoAuthToken = process.env.TURSO_AUTH_TOKEN;
 
+    // Try Turso first if configured
     if (tursoUrl && tursoAuthToken) {
-      if ((process.env.NODE_ENV as string) !== "production") {
-        console.log("DEBUG: Connecting Prisma to Turso:", tursoUrl);
-      }
-
+      console.log("INFO: Using Turso database");
       const adapter = new PrismaLibSql({
         url: tursoUrl,
         authToken: tursoAuthToken,
       });
-
       return new PrismaClient({ adapter });
     }
 
-    // Skip database in production if no Turso is configured
-    if ((process.env.NODE_ENV as string) === "production") {
-      console.log("INFO: No database configured for production. Bookmarks will use local storage.");
+    // Detect if running on Vercel
+    const isVercel = Boolean(process.env.VERCEL);
+    if (isVercel) {
+      console.log("INFO: Running on Vercel without database. Bookmarks will use browser local storage only.");
       return null;
     }
 
+    // Development: use SQLite
     const dbUrl =
       process.env.LOCAL_DATABASE_URL ||
       process.env.DATABASE_URL ||
@@ -36,10 +35,7 @@ const prismaClientSingleton = () => {
     const relativePath = dbUrl.replace("file:", "");
     const dbPath = path.resolve(/* turbopackIgnore: true */ process.cwd(), relativePath);
 
-    if ((process.env.NODE_ENV as string) !== "production") {
-      console.log("DEBUG: Connecting to SQLite at:", dbPath);
-    }
-
+    console.log("INFO: Using SQLite at:", dbPath);
     const sqlite = new Database(dbPath);
     const adapter = new PrismaBetterSqlite3(
       sqlite as unknown as ConstructorParameters<typeof PrismaBetterSqlite3>[0]
@@ -47,7 +43,7 @@ const prismaClientSingleton = () => {
     return new PrismaClient({ adapter });
   } catch (error) {
     console.error("ERROR: Failed to initialize Prisma:", error);
-    console.log("INFO: Continuing without database support.");
+    console.log("INFO: Continuing without database support. Using browser local storage for bookmarks.");
     return null;
   }
 };
