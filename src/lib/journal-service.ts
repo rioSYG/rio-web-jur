@@ -733,34 +733,35 @@ export async function searchJournalIndex(rawFilters: SearchFilters): Promise<Sea
     }
   }
 
-  // Deduplicate first
-  const deduped = dedupeJournals(journals);
+  // 1. Deduplicate
+  let processedJournals = dedupeJournals(journals);
 
-  // If user requested Indonesia mode, prefer (or restrict to) likely-local items
+  // 2. Apply Year/Category Filters first
+  processedJournals = processedJournals.filter((j) => filterJournal(j, filters));
+
+  // 3. Indonesia Mode: Narrow down to local candidates if requested
   if (filters.country === "id") {
-    const localCandidates = deduped.filter(isLikelyLocal);
-    if (localCandidates.length > 0) {
-      journals = localCandidates;
-    } else {
-      journals = deduped;
+    const localOnly = processedJournals.filter(isLikelyLocal);
+    // Only restrict if we actually found local results, otherwise show all filtered results
+    if (localOnly.length > 0) {
+      processedJournals = localOnly;
     }
-  } else {
-    journals = deduped;
   }
 
-  journals = journals.filter((journal) => filterJournal(journal, filters));
-  journals = sortJournals(journals, filters).map(enrichJournal);
+  // 4. Sort and Enrich
+  processedJournals = sortJournals(processedJournals, filters).map(enrichJournal);
 
+  // 5. Calculate Pagination
+  const totalFound = processedJournals.length;
   const startIndex = (filters.page - 1) * filters.pageSize;
-  const pageItems = journals.slice(startIndex, startIndex + filters.pageSize);
-  const safeTotal = filters.source === "all" ? Math.max(total, journals.length) : total;
+  const pageItems = processedJournals.slice(startIndex, startIndex + filters.pageSize);
 
   return {
     journals: pageItems,
-    total: safeTotal,
+    total: totalFound,
     page: filters.page,
     pageSize: filters.pageSize,
-    totalPages: Math.max(1, Math.ceil(safeTotal / filters.pageSize)),
+    totalPages: Math.max(1, Math.ceil(totalFound / filters.pageSize)),
   };
 }
 
