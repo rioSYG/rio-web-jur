@@ -14,6 +14,7 @@ export async function GET(request: Request) {
     yearFrom: Number(searchParams.get("from") || currentYear - 5),
     yearTo: Number(searchParams.get("to") || currentYear),
     source: (searchParams.get("source") as SearchFilters["source"]) || "all",
+    country: (searchParams.get("country") as SearchFilters["country"]) || "all",
     category: searchParams.get("category") || undefined,
     sortBy: (searchParams.get("sort") as SearchFilters["sortBy"]) || "relevance",
     pageSize: Number(searchParams.get("pageSize") || 10),

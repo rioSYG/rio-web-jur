@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 
+import { useTranslation } from "@/components/TranslationProvider";
 import { addBookmark, isBookmarked, removeBookmark } from "@/lib/storage";
+import { formatMessage } from "@/lib/i18n";
+import { getAccessNote, getCategoryLabel, getSourceLabel } from "@/lib/api";
 import type { Journal } from "@/types/journal";
 
 interface JournalCardProps {
@@ -13,13 +16,13 @@ interface JournalCardProps {
   isInitialBookmarked?: boolean;
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, locale: "id" | "en") {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
 
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -32,8 +35,17 @@ export default function JournalCard({
   isInitialBookmarked,
 }: JournalCardProps) {
   const { data: session } = useSession();
+  const { dict, locale } = useTranslation();
   const [bookmarked, setBookmarked] = useState(isInitialBookmarked ?? isBookmarked(journal.id));
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const authors = journal.authors.length > 0 ? journal.authors : [dict.card.authorUnknown];
+  const sourceLabel = getSourceLabel(journal.source, locale);
+  const categoryLabel = getCategoryLabel(journal.category, locale);
+  const accessNote = getAccessNote(journal, locale);
+  const abstract = journal.abstract || dict.card.noAbstract;
+  const moreAuthorsText =
+    authors.length > 4 ? ` ${formatMessage(dict.card.moreAuthors, { count: authors.length - 4 })}` : "";
 
   const toggleBookmark = async () => {
     if (isUpdating) {
@@ -77,15 +89,15 @@ export default function JournalCard({
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap gap-2">
             <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-              {journal.source}
+              {sourceLabel}
             </span>
-            {journal.category && (
+            {categoryLabel && (
               <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                {journal.category}
+                {categoryLabel}
               </span>
             )}
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-              {formatDate(journal.publishedDate)}
+              {formatDate(journal.publishedDate, locale)}
             </span>
           </div>
 
@@ -96,16 +108,20 @@ export default function JournalCard({
           </h3>
 
           <p className="mt-3 text-sm text-slate-600">
-            {journal.authors.slice(0, 4).join(", ")}
-            {journal.authors.length > 4 ? ` dan ${journal.authors.length - 4} penulis lainnya` : ""}
+            {authors.slice(0, 4).join(", ")}
+            {moreAuthorsText}
           </p>
 
-          <p className="mt-4 line-clamp-4 text-sm leading-6 text-slate-700">{journal.abstract}</p>
+          <p className="mt-4 line-clamp-4 text-sm leading-6 text-slate-700">{abstract}</p>
 
           <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-500">
             {journal.journal && <span>{journal.journal}</span>}
-            {typeof journal.citations === "number" && <span>{journal.citations} sitasi</span>}
-            {journal.accessNote && <span>{journal.accessNote}</span>}
+            {typeof journal.citations === "number" && (
+              <span>
+                {journal.citations} {dict.card.citationsSuffix}
+              </span>
+            )}
+            {accessNote && <span>{accessNote}</span>}
           </div>
         </div>
 
@@ -114,7 +130,7 @@ export default function JournalCard({
             href={`/detail?id=${encodeURIComponent(journal.id)}`}
             className="rounded-xl bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            Lihat detail
+            {dict.card.detail}
           </Link>
 
           <a
@@ -123,7 +139,7 @@ export default function JournalCard({
             rel="noopener noreferrer"
             className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            Buka sumber
+            {dict.card.openSource}
           </a>
 
           {journal.pdfUrl && (
@@ -131,7 +147,7 @@ export default function JournalCard({
               href={journal.pdfUrl}
               className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-medium text-red-700 transition hover:bg-red-100"
             >
-              Unduh PDF sumber
+              {dict.card.sourcePdf}
             </a>
           )}
 
@@ -139,14 +155,14 @@ export default function JournalCard({
             href={journal.exportPdfUrl}
             className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-center text-sm font-medium text-blue-700 transition hover:bg-blue-100"
           >
-            Ekspor PDF
+            {dict.card.exportPdf}
           </a>
 
           <a
             href={journal.exportDocxUrl}
             className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
           >
-            Ekspor DOCX
+            {dict.card.exportDocx}
           </a>
 
           <button
@@ -159,7 +175,7 @@ export default function JournalCard({
                 : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             } disabled:cursor-not-allowed disabled:opacity-60`}
           >
-            {bookmarked ? "Tersimpan" : "Simpan bookmark"}
+            {bookmarked ? dict.card.saved : dict.card.saveBookmark}
           </button>
         </div>
       </div>

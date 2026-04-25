@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { useTranslation } from "@/components/TranslationProvider";
 import type { SearchFilters } from "@/types/journal";
 
 interface SearchBarProps {
@@ -10,36 +11,64 @@ interface SearchBarProps {
   defaultQuery?: string;
 }
 
-const suggestionsPool = [
-  "Machine Learning",
-  "Artificial Intelligence",
-  "Data Science",
-  "Cancer Research",
-  "Quantum Computing",
-  "Renewable Energy",
-  "Public Health",
-  "Climate Change",
-  "Neural Networks",
-  "Bioinformatics",
-];
+const localizedSuggestions = {
+  en: [
+    "Machine Learning",
+    "Artificial Intelligence",
+    "Data Science",
+    "Cancer Research",
+    "Quantum Computing",
+    "Renewable Energy",
+    "Public Health",
+    "Climate Change",
+    "Neural Networks",
+    "Bioinformatics",
+  ],
+  id: [
+    "Pembelajaran Mesin",
+    "Kecerdasan Buatan",
+    "Ilmu Data",
+    "Riset Kanker",
+    "Komputasi Kuantum",
+    "Energi Terbarukan",
+    "Kesehatan Masyarakat",
+    "Perubahan Iklim",
+    "Jaringan Saraf",
+    "Bioinformatika",
+  ],
+} as const;
 
-const popularSearches = [
-  "Deep Learning",
-  "Cancer Research",
-  "Climate Science",
-  "Vaccine Development",
-  "Quantum Physics",
-  "Neural Networks",
-];
+const localizedPopularSearches = {
+  en: [
+    "Deep Learning",
+    "Cancer Research",
+    "Climate Science",
+    "Vaccine Development",
+    "Quantum Physics",
+    "Neural Networks",
+  ],
+  id: [
+    "Deep Learning",
+    "Riset Kanker",
+    "Sains Iklim",
+    "Pengembangan Vaksin",
+    "Fisika Kuantum",
+    "Jaringan Saraf",
+  ],
+} as const;
 
 export default function SearchBar({ onSearch, isLoading, defaultQuery = "" }: SearchBarProps) {
   const [query, setQuery] = useState(defaultQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const { dict, locale } = useTranslation();
 
-  const suggestions = query
-    ? suggestionsPool.filter((item) => item.toLowerCase().includes(query.toLowerCase()))
-    : [];
+  const suggestionsPool = localizedSuggestions[locale];
+  const popularSearches = localizedPopularSearches[locale];
+  const suggestions = useMemo(
+    () => (query ? suggestionsPool.filter((item) => item.toLowerCase().includes(query.toLowerCase())) : []),
+    [query, suggestionsPool]
+  );
 
   const runSearch = (value: string) => {
     const currentYear = new Date().getFullYear();
@@ -48,6 +77,7 @@ export default function SearchBar({ onSearch, isLoading, defaultQuery = "" }: Se
       yearFrom: currentYear - 5,
       yearTo: currentYear,
       source: "all",
+      country: "all",
       sortBy: "relevance",
       pageSize: 10,
       page: 1,
@@ -109,7 +139,7 @@ export default function SearchBar({ onSearch, isLoading, defaultQuery = "" }: Se
       <form onSubmit={handleSubmit} className="relative mx-auto mb-8 w-full max-w-4xl">
         <div className="relative">
           <label htmlFor="journal-search" className="sr-only">
-            Cari jurnal
+            {dict.search.placeholder}
           </label>
           <input
             id="journal-search"
@@ -122,8 +152,8 @@ export default function SearchBar({ onSearch, isLoading, defaultQuery = "" }: Se
             }}
             onKeyDown={handleKeyDown}
             onFocus={() => setShowSuggestions(suggestions.length > 0)}
-            placeholder="Cari jurnal, paper, topik riset, atau DOI..."
-            className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 pr-36 text-base text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            placeholder={dict.search.placeholder}
+            className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 pr-36 text-base text-slate-900 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
             disabled={isLoading}
             autoComplete="off"
           />
@@ -132,7 +162,7 @@ export default function SearchBar({ onSearch, isLoading, defaultQuery = "" }: Se
             disabled={isLoading || !query.trim()}
             className="absolute right-2 top-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            {isLoading ? "Mencari..." : "Cari"}
+            {isLoading ? dict.search.searching : dict.search.button}
           </button>
         </div>
 
@@ -160,14 +190,14 @@ export default function SearchBar({ onSearch, isLoading, defaultQuery = "" }: Se
 
       {!query && (
         <div className="mx-auto max-w-4xl">
-          <p className="mb-3 text-sm font-medium text-slate-600">Pencarian populer</p>
+          <p className="mb-3 text-sm font-medium text-slate-600">{dict.search.popular}</p>
           <div className="flex flex-wrap gap-2">
             {popularSearches.map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => runSearch(item)}
-                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
               >
                 {item}
               </button>

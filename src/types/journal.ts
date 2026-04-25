@@ -1,4 +1,5 @@
-export type JournalSource = "all" | "pubmed" | "crossref" | "arxiv" | "google";
+export type JournalSource = "all" | "pubmed" | "crossref" | "arxiv" | "garuda" | "sinta";
+export type JournalCountry = "all" | "id" | "global";
 export type JournalAvailability = "full-text" | "publisher-page" | "abstract-only";
 
 export interface SearchFilters {
@@ -6,6 +7,7 @@ export interface SearchFilters {
   yearFrom: number;
   yearTo: number;
   source: JournalSource;
+  country: JournalCountry;
   category?: string;
   sortBy: "relevance" | "date" | "citations";
   pageSize: number;

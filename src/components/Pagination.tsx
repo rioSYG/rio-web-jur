@@ -1,5 +1,8 @@
 "use client";
 
+import { useTranslation } from "@/components/TranslationProvider";
+import { formatMessage } from "@/lib/i18n";
+
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -13,6 +16,8 @@ export default function Pagination({
   onPageChange,
   isLoading,
 }: PaginationProps) {
+  const { dict } = useTranslation();
+
   if (totalPages <= 1) {
     return null;
   }
@@ -50,7 +55,7 @@ export default function Pagination({
         disabled={currentPage === 1 || isLoading}
         className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Sebelumnya
+        {dict.pagination.previous}
       </button>
 
       {pages.map((page, index) => (
@@ -77,11 +82,11 @@ export default function Pagination({
         disabled={currentPage === totalPages || isLoading}
         className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Berikutnya
+        {dict.pagination.next}
       </button>
 
       <span className="ml-2 text-sm text-slate-500">
-        Halaman {currentPage} dari {totalPages}
+        {formatMessage(dict.pagination.pageOf, { current: currentPage, total: totalPages })}
       </span>
     </div>
   );

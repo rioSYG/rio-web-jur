@@ -6,6 +6,42 @@ const REQUEST_TIMEOUT_MS = 12000;
 const CROSSREF_MAILTO = process.env.CROSSREF_MAILTO || process.env.NEXT_PUBLIC_CROSSREF_EMAIL;
 const SOURCE_FETCH_MULTIPLIER = 3;
 
+// ─── GARUDA (garuda.kemdikbud.go.id) types ────────────────────────────────
+type GarudaArticle = {
+  id?: string | number;
+  title?: string;
+  author?: string | string[];
+  abstract?: string;
+  year?: string | number;
+  journal_name?: string;
+  doi?: string;
+  url?: string;
+  volume?: string;
+  issue?: string;
+  // GARUDA JSON v1 also uses these names:
+  judul?: string;
+  penulis?: string;
+  abstrak?: string;
+  nama_jurnal?: string;
+  tautan?: string;
+};
+
+// ─── DOAJ types ───────────────────────────────────────────────────────────
+type DoajArticle = {
+  id?: string;
+  bibjson?: {
+    title?: string;
+    abstract?: string;
+    year?: string;
+    journal?: { title?: string; country_code?: string };
+    author?: Array<{ name?: string }>;
+    identifier?: Array<{ type?: string; id?: string }>;
+    link?: Array<{ type?: string; url?: string }>;
+    subject?: Array<{ term?: string }>;
+    keywords?: string[];
+  };
+};
+
 const fallbackJournals: Journal[] = [
   {
     id: "10.48550/arXiv.1706.03762",
@@ -74,6 +110,7 @@ function normalizeFilters(filters: SearchFilters): SearchFilters {
     yearFrom: Math.min(yearFrom, yearTo),
     yearTo: Math.max(yearFrom, yearTo),
     source: filters.source || "all",
+    country: filters.country || "all",
     category: filters.category?.trim() || undefined,
     sortBy: filters.sortBy || "relevance",
     pageSize: Math.min(Math.max(filters.pageSize || 10, 1), 50),
@@ -447,6 +484,137 @@ async function searchPubMed(filters: SearchFilters): Promise<SourceResult> {
   };
 }
 
+// ─── GARUDA (garuda.kemdikbud.go.id) ─────────────────────────────────────
+function mapGarudaArticle(item: GarudaArticle): Journal {
+  const title = cleanText(item.title || item.judul) || "Untitled";
+  const rawAuthors = item.author || item.penulis;
+  const authors: string[] = Array.isArray(rawAuthors)
+    ? rawAuthors.map(cleanText).filter(Boolean)
+    : rawAuthors
+    ? cleanText(rawAuthors)
+        .split(/[;,]/)  
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : ["Unknown"];
+  const year = String(item.year || new Date().getFullYear());
+  const doi = item.doi;
+  const landingUrl = item.url || item.tautan || (doi ? `https://doi.org/${doi}` : "");
+  return {
+    id: doi || `garuda-${String(item.id || crypto.randomUUID())}`,
+    title,
+    authors,
+    abstract: cleanText(item.abstract || item.abstrak) || "Abstrak tidak tersedia dari GARUDA.",
+    publishedDate: `${year}-01-01`,
+    source: "garuda",
+    doi,
+    url: landingUrl,
+    landingUrl,
+    fullTextUrl: landingUrl,
+    journal: cleanText(item.journal_name || item.nama_jurnal) || "GARUDA",
+    category: "Indonesian Journal",
+    availability: "publisher-page",
+    accessNote: "Artikel tersedia melalui portal GARUDA Kemdikbud.",
+  };
+}
+
+async function searchGaruda(filters: SearchFilters): Promise<SourceResult> {
+  // GARUDA API v1: https://garuda.kemdikbud.go.id/api/article?keyword=...&page=...
+  const page = filters.source === "all" ? 1 : filters.page;
+  const params = new URLSearchParams({
+    keyword: filters.query,
+    page: String(page),
+  });
+
+  try {
+    const data = await fetchJson<{ data?: GarudaArticle[]; total?: number } | GarudaArticle[]>(
+      `https://garuda.kemdikbud.go.id/api/article?${params.toString()}`,
+      { signal: createAbortSignal() }
+    );
+
+    const items: GarudaArticle[] = Array.isArray(data)
+      ? data
+      : (data as { data?: GarudaArticle[] }).data || [];
+
+    const total: number = Array.isArray(data)
+      ? items.length
+      : (data as { total?: number }).total ?? items.length;
+
+    const journals = items
+      .map(mapGarudaArticle)
+      .filter((j) => {
+        const y = new Date(j.publishedDate).getFullYear();
+        return y >= filters.yearFrom && y <= filters.yearTo;
+      });
+
+    return { journals, total };
+  } catch {
+    return { journals: [], total: 0 };
+  }
+}
+
+// ─── DOAJ – Indonesia filter (used for "sinta" source) ────────────────────
+function mapDoajArticle(item: DoajArticle): Journal {
+  const bib = item.bibjson || {};
+  const doi = bib.identifier?.find((i) => i.type === "doi")?.id;
+  const fullTextLink = bib.link?.find((l) => l.type === "fulltext")?.url;
+  const landingUrl = fullTextLink || (doi ? `https://doi.org/${doi}` : "");
+  const year = bib.year || "2000";
+  return {
+    id: doi || `doaj-${item.id || crypto.randomUUID()}`,
+    title: cleanText(bib.title) || "Untitled",
+    authors: bib.author?.map((a) => cleanText(a.name) || "Unknown").filter(Boolean) || ["Unknown"],
+    abstract: cleanText(bib.abstract) || "Abstrak tidak tersedia dari DOAJ.",
+    publishedDate: `${year}-01-01`,
+    source: "sinta",
+    doi,
+    url: landingUrl,
+    landingUrl,
+    fullTextUrl: fullTextLink || landingUrl,
+    sourcePdfUrl: undefined,
+    journal: cleanText(bib.journal?.title) || "DOAJ Indonesia",
+    category: bib.subject?.[0]?.term || "Indonesian Journal",
+    keywords: bib.keywords || [],
+    availability: fullTextLink ? "full-text" : "publisher-page",
+    accessNote: fullTextLink
+      ? "Full text tersedia melalui DOAJ."
+      : "Artikel terindeks DOAJ – buka halaman jurnal untuk akses penuh.",
+  };
+}
+
+async function searchDoajIndonesia(filters: SearchFilters): Promise<SourceResult> {
+  // DOAJ API v2 – filter by Indonesia country code
+  const pageSize = filters.source === "all"
+    ? filters.pageSize * SOURCE_FETCH_MULTIPLIER
+    : filters.pageSize;
+  const page = filters.source === "all" ? 1 : filters.page;
+
+  // DOAJ uses Lucene syntax. To combine text query and field query, just write:
+  // "TEXT AND bibjson.journal.country:ID"
+  const rawQuery = `${filters.query} AND bibjson.journal.country:ID`;
+  const encQuery = encodeURIComponent(rawQuery);
+  const sortParam = filters.sortBy === "date" ? "&sort=created_date:desc" : "";
+  const url = `https://doaj.org/api/v2/search/articles/${encQuery}?page=${page}&pageSize=${pageSize}${sortParam}`;
+
+  try {
+    const data = await fetchJson<{ results?: DoajArticle[]; total?: number }>(
+      url,
+      { signal: createAbortSignal() }
+    );
+
+    const items = data.results || [];
+    const journals = items
+      .map(mapDoajArticle)
+      .filter((j) => {
+        const y = new Date(j.publishedDate).getFullYear();
+        return y >= filters.yearFrom && y <= filters.yearTo;
+      });
+
+    return { journals, total: data.total ?? journals.length };
+  } catch {
+    return { journals: [], total: 0 };
+  }
+}
+
 export async function searchJournalIndex(rawFilters: SearchFilters): Promise<SearchResult> {
   const filters = normalizeFilters(rawFilters);
 
@@ -460,25 +628,31 @@ export async function searchJournalIndex(rawFilters: SearchFilters): Promise<Sea
     };
   }
 
-  const sources =
-    filters.source === "all"
-      ? (["crossref", "arxiv", "pubmed"] as const)
-      : ([filters.source] as const);
+  // Decide which sources to query based on country + source filter
+  type SourceKey = "crossref" | "arxiv" | "pubmed" | "garuda" | "sinta";
+  let sources: SourceKey[];
+
+  if (filters.country === "id") {
+    // Indonesia mode: only GARUDA + DOAJ-Indonesia regardless of source selector
+    sources = filters.source === "garuda"
+      ? ["garuda"]
+      : filters.source === "sinta"
+      ? ["sinta"]
+      : ["garuda", "sinta"];
+  } else if (filters.source === "all") {
+    // Global all: crossref + arxiv + pubmed (no Indonesian sources unless country=id)
+    sources = ["crossref", "arxiv", "pubmed"];
+  } else {
+    sources = [filters.source as SourceKey];
+  }
 
   const results = await Promise.allSettled(
     sources.map(async (source) => {
-      if (source === "crossref") {
-        return searchCrossref(filters);
-      }
-
-      if (source === "arxiv") {
-        return searchArxiv(filters);
-      }
-
-      if (source === "pubmed") {
-        return searchPubMed(filters);
-      }
-
+      if (source === "crossref") return searchCrossref(filters);
+      if (source === "arxiv") return searchArxiv(filters);
+      if (source === "pubmed") return searchPubMed(filters);
+      if (source === "garuda") return searchGaruda(filters);
+      if (source === "sinta") return searchDoajIndonesia(filters);
       return { journals: [], total: 0 };
     })
   );
@@ -563,14 +737,24 @@ export async function getJournalById(id: string) {
 }
 
 export function getCategories() {
-  return ["All", "Computer Science", "Medicine", "Physics", "Biology", "Mathematics", "Economics", "General"];
+  return ["All", "Computer Science", "Medicine", "Physics", "Biology", "Mathematics", "Economics", "Indonesian Journal", "General"];
 }
 
 export function getSources() {
   return [
     { id: "all", name: "Semua Sumber" },
-    { id: "pubmed", name: "PubMed" },
     { id: "crossref", name: "Crossref" },
     { id: "arxiv", name: "arXiv" },
+    { id: "pubmed", name: "PubMed" },
+    { id: "garuda", name: "GARUDA (Indonesia)", country: "id" },
+    { id: "sinta", name: "DOAJ Indonesia (Sinta)", country: "id" },
+  ];
+}
+
+export function getCountries() {
+  return [
+    { id: "all", name: "🌍 Semua Negara" },
+    { id: "id", name: "🇮🇩 Indonesia" },
+    { id: "global", name: "🌐 Internasional" },
   ];
 }

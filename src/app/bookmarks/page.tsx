@@ -5,11 +5,14 @@ import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 
 import JournalCard from "@/components/JournalCard";
+import { useTranslation } from "@/components/TranslationProvider";
 import { exportBookmarks, getBookmarkedJournals } from "@/lib/storage";
+import { formatMessage } from "@/lib/i18n";
 import type { BookmarkedJournal } from "@/types/journal";
 
 export default function BookmarksPage() {
   const { status } = useSession();
+  const { dict } = useTranslation();
   const [bookmarks, setBookmarks] = useState<BookmarkedJournal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [exportFormat, setExportFormat] = useState<"json" | "csv" | "bibtex" | "pdf">("json");
@@ -48,7 +51,7 @@ export default function BookmarksPage() {
 
   const handleExport = () => {
     if (bookmarks.length === 0) {
-      window.alert("Belum ada bookmark untuk diekspor.");
+      window.alert(dict.bookmarks.emptyExportAlert);
       return;
     }
 
@@ -70,7 +73,7 @@ export default function BookmarksPage() {
   };
 
   if (isLoading || status === "loading") {
-    return <div className="py-12 text-center text-slate-600">Memuat bookmark...</div>;
+    return <div className="py-12 text-center text-slate-600">{dict.common.loadingBookmarks}</div>;
   }
 
   return (
@@ -78,21 +81,19 @@ export default function BookmarksPage() {
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold text-slate-900">Bookmark saya</h1>
+            <h1 className="text-3xl font-semibold text-slate-900">{dict.bookmarks.title}</h1>
             <p className="mt-2 text-sm text-slate-600">
-              {bookmarks.length} jurnal tersimpan {status === "authenticated" ? "di akun Anda." : "di perangkat ini."}
+              {status === "authenticated"
+                ? formatMessage(dict.bookmarks.countCloud, { count: bookmarks.length })
+                : formatMessage(dict.bookmarks.countLocal, { count: bookmarks.length })}
             </p>
             {status !== "authenticated" && (
-              <p className="mt-2 text-sm text-slate-500">
-                Login jika Anda ingin menyimpan bookmark ke database dan sinkron antar sesi.
-              </p>
+              <p className="mt-2 text-sm text-slate-500">{dict.bookmarks.syncHint}</p>
             )}
           </div>
 
           {status !== "authenticated" && (
-            <p className="text-sm text-slate-500">
-              Gunakan tombol login di navbar jika ingin menyimpan bookmark ke database cloud.
-            </p>
+            <p className="text-sm text-slate-500">{dict.bookmarks.loginHint}</p>
           )}
         </div>
       </div>
@@ -101,7 +102,7 @@ export default function BookmarksPage() {
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-end">
             <label className="block text-sm text-slate-700">
-              <span className="mb-2 block font-medium">Format ekspor</span>
+              <span className="mb-2 block font-medium">{dict.bookmarks.exportFormat}</span>
               <select
                 value={exportFormat}
                 onChange={(event) => setExportFormat(event.target.value as typeof exportFormat)}
@@ -110,7 +111,7 @@ export default function BookmarksPage() {
                 <option value="json">JSON</option>
                 <option value="csv">CSV</option>
                 <option value="bibtex">BibTeX</option>
-                <option value="pdf">Cetak PDF</option>
+                <option value="pdf">{dict.bookmarks.printPdf}</option>
               </select>
             </label>
 
@@ -119,7 +120,7 @@ export default function BookmarksPage() {
               onClick={handleExport}
               className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
             >
-              Download {exportFormat.toUpperCase()}
+              {formatMessage(dict.bookmarks.download, { format: exportFormat.toUpperCase() })}
             </button>
 
             <button
@@ -127,7 +128,7 @@ export default function BookmarksPage() {
               onClick={() => void loadBookmarks()}
               className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
-              Segarkan
+              {dict.bookmarks.refresh}
             </button>
           </div>
         </div>
@@ -141,15 +142,13 @@ export default function BookmarksPage() {
         </div>
       ) : (
         <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">Belum ada bookmark</h2>
-          <p className="mt-3 text-sm text-slate-600">
-            Cari jurnal terlebih dulu, lalu simpan artikel yang ingin Anda baca ulang.
-          </p>
+          <h2 className="text-xl font-semibold text-slate-900">{dict.bookmarks.emptyTitle}</h2>
+          <p className="mt-3 text-sm text-slate-600">{dict.bookmarks.emptyDesc}</p>
           <Link
             href="/"
             className="mt-6 inline-flex rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
           >
-            Mulai mencari
+            {dict.bookmarks.startSearching}
           </Link>
         </div>
       )}
