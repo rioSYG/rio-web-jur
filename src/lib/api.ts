@@ -26,6 +26,7 @@ const sourceLabels: Record<string, LocalizedLabel> = {
   pubmed: { id: "PubMed", en: "PubMed" },
   garuda: { id: "GARUDA (Indonesia)", en: "GARUDA (Indonesia)" },
   sinta: { id: "DOAJ Indonesia (Sinta)", en: "DOAJ Indonesia (Sinta)" },
+  onesearch: { id: "Indonesia OneSearch", en: "Indonesia OneSearch" },
 };
 
 const countryLabels: Record<JournalCountry, LocalizedLabel> = {
@@ -147,6 +148,7 @@ export function getSources(locale: Locale): Array<{ id: JournalSource; name: str
     { id: "pubmed", name: sourceLabels.pubmed[locale] },
     { id: "garuda", name: sourceLabels.garuda[locale], country: "id" },
     { id: "sinta", name: sourceLabels.sinta[locale], country: "id" },
+    { id: "onesearch", name: sourceLabels.onesearch[locale], country: "id" },
   ];
 }
 

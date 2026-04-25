@@ -1,4 +1,4 @@
-export type JournalSource = "all" | "pubmed" | "crossref" | "arxiv" | "garuda" | "sinta";
+export type JournalSource = "all" | "pubmed" | "crossref" | "arxiv" | "garuda" | "sinta" | "onesearch";
 export type JournalCountry = "all" | "id" | "global";
 export type JournalAvailability = "full-text" | "publisher-page" | "abstract-only";
 

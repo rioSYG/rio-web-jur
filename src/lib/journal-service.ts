@@ -100,9 +100,31 @@ function buildSourcePdfUrl(id: string) {
   return `/api/journals/download?id=${encodeURIComponent(id)}&format=source-pdf`;
 }
 
+const INDO_KEYWORD_EXPANSION: Record<string, string[]> = {
+  "acetaldehyde": ["asetaldehid", "etanal"],
+  "ethyl acetate": ["etil asetat"],
+  "lansoprazole": ["lansoprazol"],
+  "paracetamol": ["asetaminofen"],
+  "acetic acid": ["asam asetat", "cuka"],
+  "hydrochloric acid": ["asam klorida", "hcl"],
+};
+
+function expandQuery(query: string): string {
+  const lowerQuery = query.toLowerCase().trim();
+  const expansions = INDO_KEYWORD_EXPANSION[lowerQuery];
+  if (expansions) {
+    return `${query} OR ${expansions.join(" OR ")}`;
+  }
+  return query;
+}
+
 function normalizeFilters(filters: SearchFilters): SearchFilters {
   const year = new Date().getFullYear();
-  const yearFrom = Number.isFinite(filters.yearFrom) ? filters.yearFrom : year - 5;
+  // If query looks like a specific chemical/medical term, default to a wider range
+  const isChemical = /acetaldehyd|lansoprazole|acetate|ethyl|acid|mg|drug/i.test(filters.query);
+  const defaultYearRange = isChemical ? 20 : 10;
+  
+  const yearFrom = Number.isFinite(filters.yearFrom) ? filters.yearFrom : (year - defaultYearRange);
   const yearTo = Number.isFinite(filters.yearTo) ? filters.yearTo : year;
 
   return {
@@ -177,17 +199,42 @@ function normalizeTitleForScore(title: string) {
 
 function getQueryScore(journal: Journal, query: string) {
   const normalizedQuery = normalizeTitleForScore(query);
-  const haystack = `${journal.title} ${journal.abstract} ${journal.keywords?.join(" ") || ""}`.toLowerCase();
-  if (!normalizedQuery) {
-    return 0;
+  if (!normalizedQuery) return 0;
+
+  const title = normalizeTitleForScore(journal.title);
+  const abstract = normalizeTitleForScore(journal.abstract || "");
+  const keywords = (journal.keywords || []).map(k => k.toLowerCase()).join(" ");
+  
+  let score = 0;
+
+  // 1. Exact Phrase Match in Title (Highest Priority)
+  if (title.includes(normalizedQuery)) {
+    score += 10;
+    // Bonus if it's exactly the title
+    if (title === normalizedQuery) score += 5;
   }
 
-  if (haystack.includes(normalizedQuery)) {
-    return 3;
+  // 2. Exact Phrase Match in Keywords
+  if (keywords.includes(normalizedQuery)) {
+    score += 5;
   }
 
-  const words = normalizedQuery.split(" ").filter(Boolean);
-  return words.reduce((score, word) => score + (haystack.includes(word) ? 1 : 0), 0);
+  // 3. Exact Phrase Match in Abstract
+  if (abstract.includes(normalizedQuery)) {
+    score += 3;
+  }
+
+  // 4. Individual Word Matches
+  const words = normalizedQuery.split(" ").filter(w => w.length > 2);
+  if (words.length > 1) {
+    words.forEach(word => {
+      if (title.includes(word)) score += 2;
+      if (keywords.includes(word)) score += 1;
+      if (abstract.includes(word)) score += 0.5;
+    });
+  }
+
+  return score;
 }
 
 function sortJournals(journals: Journal[], filters: SearchFilters) {
@@ -324,6 +371,7 @@ function mapCrossrefItem(item: CrossrefWork): Journal {
 }
 
 async function searchCrossref(filters: SearchFilters): Promise<SourceResult> {
+  const query = expandQuery(filters.query);
   const rows =
     filters.source === "all"
       ? filters.page * filters.pageSize * SOURCE_FETCH_MULTIPLIER
@@ -331,7 +379,7 @@ async function searchCrossref(filters: SearchFilters): Promise<SourceResult> {
   const offset = filters.source === "all" ? 0 : (filters.page - 1) * filters.pageSize;
 
   const params = new URLSearchParams({
-    query: filters.query,
+    query: query,
     rows: String(rows),
     offset: String(offset),
     sort: filters.sortBy === "date" ? "published" : "relevance",
@@ -378,6 +426,7 @@ function mapArxivEntry(entry: string): Journal {
 }
 
 async function searchArxiv(filters: SearchFilters): Promise<SourceResult> {
+  const query = expandQuery(filters.query);
   const maxResults =
     filters.source === "all"
       ? filters.page * filters.pageSize * SOURCE_FETCH_MULTIPLIER
@@ -451,6 +500,7 @@ function mapPubMedItem(item: PubMedSummary, abstract: string, pmcId?: string): J
 }
 
 async function searchPubMed(filters: SearchFilters): Promise<SourceResult> {
+  const query = expandQuery(filters.query);
   const retmax =
     filters.source === "all"
       ? filters.page * filters.pageSize * SOURCE_FETCH_MULTIPLIER
@@ -458,7 +508,7 @@ async function searchPubMed(filters: SearchFilters): Promise<SourceResult> {
   const retstart = filters.source === "all" ? 0 : (filters.page - 1) * filters.pageSize;
   const params = new URLSearchParams({
     db: "pubmed",
-    term: filters.query,
+    term: query,
     retmode: "json",
     retmax: String(retmax),
     retstart: String(retstart),
@@ -642,16 +692,18 @@ export async function searchJournalIndex(rawFilters: SearchFilters): Promise<Sea
   }
 
   // Decide which sources to query based on country + source filter
-  type SourceKey = "crossref" | "arxiv" | "pubmed" | "garuda" | "sinta";
+  type SourceKey = "crossref" | "arxiv" | "pubmed" | "garuda" | "sinta" | "onesearch";
   let sources: SourceKey[];
 
   if (filters.country === "id") {
-    // Indonesia mode: only GARUDA + DOAJ-Indonesia regardless of source selector
+    // Indonesia mode: include OneSearch
     sources = filters.source === "garuda"
       ? ["garuda"]
       : filters.source === "sinta"
       ? ["sinta"]
-      : ["garuda", "sinta"];
+      : filters.source === "onesearch"
+      ? ["onesearch"]
+      : ["garuda", "sinta", "onesearch"];
   } else if (filters.source === "all") {
     // Global all: crossref + arxiv + pubmed (no Indonesian sources unless country=id)
     sources = ["crossref", "arxiv", "pubmed"];
@@ -666,6 +718,7 @@ export async function searchJournalIndex(rawFilters: SearchFilters): Promise<Sea
       if (source === "pubmed") return searchPubMed(filters);
       if (source === "garuda") return searchGaruda(filters);
       if (source === "sinta") return searchDoajIndonesia(filters);
+      if (source === "onesearch") return { journals: [], total: 0 }; // Placeholder for future API
       return { journals: [], total: 0 };
     })
   );
@@ -791,6 +844,7 @@ export function getSources() {
     { id: "pubmed", name: "PubMed" },
     { id: "garuda", name: "GARUDA (Indonesia)", country: "id" },
     { id: "sinta", name: "DOAJ Indonesia (Sinta)", country: "id" },
+    { id: "onesearch", name: "Indonesia OneSearch", country: "id" },
   ];
 }
 
