@@ -57,7 +57,7 @@ const fallbackJournals: Journal[] = [
     fullTextUrl: "https://arxiv.org/abs/1706.03762",
     sourcePdfUrl: "https://arxiv.org/pdf/1706.03762.pdf",
     journal: "arXiv",
-    category: "Computer Science",
+    category: "Ilmu Komputer",
     availability: "full-text",
     accessNote: "PDF tersedia langsung dari arXiv.",
   },
@@ -231,6 +231,19 @@ function dedupeJournals(journals: Journal[]) {
   return [...unique.values()];
 }
 
+function isLikelyLocal(journal: Journal) {
+  const hostChecks = [".ac.id", ".edu.id", ".sch.id", "universit", "univ", "politeknik", "institut", "researchgate.net"];
+  const text = `${journal.title} ${journal.journal} ${journal.url || ""} ${journal.landingUrl || ""} ${journal.authors?.join(" ") || ""}`.toLowerCase();
+  for (const h of hostChecks) {
+    if (text.includes(h)) return true;
+  }
+
+  // If DOI or source suggests local indexing (GARUDA/DOAJ Sinta), treat as local
+  if (journal.source === "garuda" || journal.source === "sinta") return true;
+
+  return false;
+}
+
 function enrichJournal(journal: Journal): Journal {
   return {
     ...journal,
@@ -301,7 +314,7 @@ function mapCrossrefItem(item: CrossrefWork): Journal {
     fullTextUrl: landingUrl,
     sourcePdfUrl: pdfLink,
     journal: cleanText(item["container-title"]?.[0]) || "Crossref",
-    category: item.subject?.[0] || "General",
+    category: item.subject?.[0] || "Umum",
     keywords: item.subject || [],
     availability: pdfLink ? "full-text" : "publisher-page",
     accessNote: pdfLink
@@ -357,7 +370,7 @@ function mapArxivEntry(entry: string): Journal {
     fullTextUrl: `https://arxiv.org/abs/${arxivId}`,
     sourcePdfUrl: pdfLink,
     journal: "arXiv",
-    category: categories[0] || "Science",
+    category: categories[0] || "Sains",
     keywords: categories,
     availability: "full-text",
     accessNote: "PDF tersedia langsung dari arXiv.",
@@ -429,7 +442,7 @@ function mapPubMedItem(item: PubMedSummary, abstract: string, pmcId?: string): J
     landingUrl: pubmedUrl,
     fullTextUrl: pmcUrl || pubmedUrl,
     journal: cleanText(item.source) || "PubMed",
-    category: "Medicine",
+    category: "Kedokteran",
     availability: pmcUrl ? "full-text" : "abstract-only",
     accessNote: pmcUrl
       ? "PubMed Central menyediakan halaman full text terbuka."
@@ -511,7 +524,7 @@ function mapGarudaArticle(item: GarudaArticle): Journal {
     landingUrl,
     fullTextUrl: landingUrl,
     journal: cleanText(item.journal_name || item.nama_jurnal) || "GARUDA",
-    category: "Indonesian Journal",
+    category: "Jurnal Indonesia",
     availability: "publisher-page",
     accessNote: "Artikel tersedia melalui portal GARUDA Kemdikbud.",
   };
@@ -572,7 +585,7 @@ function mapDoajArticle(item: DoajArticle): Journal {
     fullTextUrl: fullTextLink || landingUrl,
     sourcePdfUrl: undefined,
     journal: cleanText(bib.journal?.title) || "DOAJ Indonesia",
-    category: bib.subject?.[0]?.term || "Indonesian Journal",
+    category: bib.subject?.[0]?.term || "Jurnal Indonesia",
     keywords: bib.keywords || [],
     availability: fullTextLink ? "full-text" : "publisher-page",
     accessNote: fullTextLink
@@ -667,7 +680,22 @@ export async function searchJournalIndex(rawFilters: SearchFilters): Promise<Sea
     }
   }
 
-  journals = dedupeJournals(journals).filter((journal) => filterJournal(journal, filters));
+  // Deduplicate first
+  const deduped = dedupeJournals(journals);
+
+  // If user requested Indonesia mode, prefer (or restrict to) likely-local items
+  if (filters.country === "id") {
+    const localCandidates = deduped.filter(isLikelyLocal);
+    if (localCandidates.length > 0) {
+      journals = localCandidates;
+    } else {
+      journals = deduped;
+    }
+  } else {
+    journals = deduped;
+  }
+
+  journals = journals.filter((journal) => filterJournal(journal, filters));
   journals = sortJournals(journals, filters).map(enrichJournal);
 
   const startIndex = (filters.page - 1) * filters.pageSize;
@@ -737,7 +765,22 @@ export async function getJournalById(id: string) {
 }
 
 export function getCategories() {
-  return ["All", "Computer Science", "Medicine", "Physics", "Biology", "Mathematics", "Economics", "Indonesian Journal", "General"];
+  return ["All", "Computer Science", "Medicine", "Physics", "Biology", "Mathematics", "Economics", "Indonesian Journal", "General", "Science"];
+}
+
+export function getCategory(categoryEn: string | undefined): string {
+  const categoryMap: Record<string, string> = {
+    "Computer Science": "Ilmu Komputer",
+    "Medicine": "Kedokteran",
+    "Physics": "Fisika",
+    "Biology": "Biologi",
+    "Mathematics": "Matematika",
+    "Economics": "Ekonomi",
+    "Indonesian Journal": "Jurnal Indonesia",
+    "General": "Umum",
+    "Science": "Sains",
+  };
+  return categoryMap[categoryEn || ""] || categoryEn || "Umum";
 }
 
 export function getSources() {
